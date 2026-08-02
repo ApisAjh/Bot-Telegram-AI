@@ -2,6 +2,15 @@
 telegram.py
 Modul wrapper untuk mengirim pesan dan mem-parsing update dari Telegram Bot API,
 menggunakan library python-telegram-bot.
+
+Catatan penting (serverless): Bot TIDAK di-cache lintas request. Di lingkungan
+serverless seperti Vercel, sebuah "warm" function instance bisa dipakai ulang
+untuk request berikutnya, sementara httpx client internal python-telegram-bot
+terikat ke event loop dari asyncio.run() sebelumnya yang sudah ditutup.
+Jika Bot di-cache, request kedua akan gagal dengan error semacam
+"Event loop is closed" dan bot terlihat "mati" setelah pesan pertama.
+Solusinya: buat instance Bot baru dan inisialisasi/tutup dengan
+`async with Bot(...)` pada setiap panggilan, dalam loop yang sama.
 """
 
 import asyncio
@@ -13,19 +22,18 @@ from telegram.error import TelegramError
 
 logger = logging.getLogger("telegram-groq-bot")
 
-_bot_instances: dict[str, Bot] = {}
-
-
-def get_bot(token: str) -> Bot:
-    """Mengembalikan instance Bot (di-cache per token) agar tidak dibuat berulang kali."""
-    if token not in _bot_instances:
-        _bot_instances[token] = Bot(token=token)
-    return _bot_instances[token]
-
 
 def parse_update(data: dict, token: str) -> Update:
     """Mengubah payload JSON webhook Telegram menjadi objek Update."""
-    return Update.de_json(data, get_bot(token))
+    # Tidak butuh koneksi jaringan, jadi Bot() biasa (tanpa async init) sudah aman.
+    return Update.de_json(data, Bot(token=token))
+
+
+async def _send_message_async(
+    token: str, chat_id: int, text: str, parse_mode: str | None
+) -> None:
+    async with Bot(token=token) as bot:
+        await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
 
 
 def send_message(
@@ -38,16 +46,16 @@ def send_message(
     Mengirim pesan ke Telegram. Jika gagal karena masalah parsing Markdown,
     otomatis mengirim ulang sebagai teks polos agar pesan tetap sampai ke pengguna.
     """
-    bot = get_bot(token)
     try:
-        asyncio.run(bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode))
+        asyncio.run(_send_message_async(token, chat_id, text, parse_mode))
     except TelegramError as exc:
         logger.warning(
             "Gagal mengirim dengan parse_mode=%s (%s). Mencoba tanpa formatting.",
             parse_mode, exc,
         )
         try:
-            asyncio.run(bot.send_message(chat_id=chat_id, text=text))
+            asyncio.run(_send_message_async(token, chat_id, text, None))
         except TelegramError as exc2:
             logger.error("Gagal mengirim pesan ke Telegram: %s", exc2)
             raise
+            
