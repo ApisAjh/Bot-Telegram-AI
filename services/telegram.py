@@ -16,7 +16,7 @@ Solusinya: buat instance Bot baru dan inisialisasi/tutup dengan
 import asyncio
 import logging
 
-from telegram import Bot, Update
+from telegram import Bot, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
@@ -30,10 +30,19 @@ def parse_update(data: dict, token: str) -> Update:
 
 
 async def _send_message_async(
-    token: str, chat_id: int, text: str, parse_mode: str | None
+    token: str,
+    chat_id: int,
+    text: str,
+    parse_mode: str | None,
+    reply_markup=None,
 ) -> None:
     async with Bot(token=token) as bot:
-        await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
+        )
 
 
 def send_message(
@@ -41,21 +50,34 @@ def send_message(
     chat_id: int,
     text: str,
     parse_mode: str | None = ParseMode.MARKDOWN,
+    reply_markup=None,
 ) -> None:
     """
     Mengirim pesan ke Telegram. Jika gagal karena masalah parsing Markdown,
     otomatis mengirim ulang sebagai teks polos agar pesan tetap sampai ke pengguna.
     """
     try:
-        asyncio.run(_send_message_async(token, chat_id, text, parse_mode))
+        asyncio.run(_send_message_async(token, chat_id, text, parse_mode, reply_markup))
     except TelegramError as exc:
         logger.warning(
             "Gagal mengirim dengan parse_mode=%s (%s). Mencoba tanpa formatting.",
             parse_mode, exc,
         )
         try:
-            asyncio.run(_send_message_async(token, chat_id, text, None))
+            asyncio.run(_send_message_async(token, chat_id, text, None, reply_markup))
         except TelegramError as exc2:
             logger.error("Gagal mengirim pesan ke Telegram: %s", exc2)
             raise
+
+
+def get_donate_keyboard() -> InlineKeyboardMarkup:
+    """Inline keyboard berisi tombol Donate Developer."""
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "❤️ Donate Developer ❤️", url="https://t.me/iMstaycalm"
+            )
+        ]
+    ]
+    return InlineKeyboardMarkup(buttons)
             
