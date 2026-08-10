@@ -68,7 +68,13 @@ ERROR_SERVER_MESSAGE = "⚠️ Server sedang mengalami gangguan."
 def handle_command(command: str, chat_id: int) -> None:
     """Menangani perintah bawaan bot (/start, /help, /about, /ping)."""
     if command == "/start":
-        telegram.send_message(BOT_TOKEN, chat_id, START_MESSAGE, parse_mode=None)
+        telegram.send_message(
+            BOT_TOKEN,
+            chat_id,
+            START_MESSAGE,
+            parse_mode=None,
+            reply_markup=telegram.get_donate_keyboard(),
+        )
     elif command == "/help":
         telegram.send_message(BOT_TOKEN, chat_id, HELP_MESSAGE)
     elif command == "/about":
