@@ -31,7 +31,7 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")  # opsional, untuk validasi tambaha
 
 START_MESSAGE = (
     "👋 Halo!\n"
-    "Selamat datang di AI Telegram Bot.\n\n"
+    "Selamat datang di Bot Telegram AI.\n\n"
     "Saya siap membantu menjawab berbagai pertanyaan, menjelaskan materi, "
     "membantu pemrograman, menerjemahkan bahasa, memberikan ide, serta "
     "membantu menyelesaikan berbagai tugas.\n\n"
